@@ -160,6 +160,14 @@ class HomeController: UIViewController {
             backgroundImage.image = UIImage(named: "forest_cloudy")
             backgroundView.backgroundColor = UIColor(named: "cloudy")
             contentViewColour = UIColor(named: "cloudy")!
+        case "Snow":
+            backgroundImage.image = UIImage(named: "forest_snowy")
+            backgroundView.backgroundColor = UIColor(named: "snow")
+            contentViewColour = UIColor(named: "snow")!
+        case "Fog":
+            backgroundImage.image = UIImage(named: "forest_foggy")
+            backgroundView.backgroundColor = UIColor(named: "fog")
+            contentViewColour = UIColor(named: "fog")!
         default:
             backgroundImage.image = UIImage(named: "forest_sunny")
             backgroundView.backgroundColor = UIColor(named: "sunny")
@@ -268,6 +276,10 @@ extension HomeController: UITableViewDataSource {
             cell.weatherSymbol.image = UIImage(named: "rain")
         case "Clouds":
             cell.weatherSymbol.image = UIImage(named: "clouds")
+        case "Fog":
+            cell.weatherSymbol.image = UIImage(named: "fog")
+        case "Snow":
+            cell.weatherSymbol.image = UIImage(named: "snow")
         default:
             cell.weatherSymbol.image = UIImage(named: "clear")
         }
