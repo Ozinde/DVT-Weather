@@ -25,6 +25,10 @@ Outlets have been marked as weak to limit the retention cycle and minimize memor
 The fileprivate access modifier has been used for all functions unless they form part of a protocol, inheriting from a superclass or class functionality is required.
 Variables and constants have been marked with the private modifier. An exception to this is where access is required in another file.
 
+#  Considerations
+
+Some of the weather types were not provided for as per the given assets for the app. An example of this is with the snow and fog weather conditions. As such, I have taken the liberty to create assets that correspond to these weather types. It is worth noting, however, that the assets I have created are not exhaustive in terms of all the weather conditions that can be found and received from the Open Weather API.
+
 #  Architecture
 
 The app makes use of the model, view and controller (MVC) structure and the apps files have been grouped in accordance to this method of design.
