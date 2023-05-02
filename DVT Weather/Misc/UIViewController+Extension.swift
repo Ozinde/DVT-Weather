@@ -23,6 +23,17 @@ extension UIViewController {
         }
     }
     
+    /// Alert controller displayed when there is an error.
+    func showPermissionMessage() {
+        DispatchQueue.main.async {
+            let alertVC = UIAlertController(title: "Permission Required", message: "Please grant permission to access your current location to view weather information. This can be changed in settings.", preferredStyle: .alert)
+            alertVC.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+            alertVC.popoverPresentationController?.sourceView = self.view
+            // Presentation of the alert
+            self.present(alertVC, animated: true, completion: nil)
+        }
+    }
+    
     /// Function that monitors the network
     func monitorNetwork() {
         let monitor = NWPathMonitor()
