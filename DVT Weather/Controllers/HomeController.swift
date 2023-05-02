@@ -314,10 +314,10 @@ extension HomeController: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         switch status {
         case .restricted:
-            manager.requestWhenInUseAuthorization()
+            showPermissionMessage()
             print("Location access was restricted.")
         case .denied:
-            manager.requestWhenInUseAuthorization()
+            showPermissionMessage()
             print("User denied access to location.")
         case .notDetermined:
             print("Location status not determined.")
