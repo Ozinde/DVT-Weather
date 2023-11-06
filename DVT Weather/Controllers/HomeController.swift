@@ -130,17 +130,32 @@ class HomeController: UIViewController {
             forecast.removeFirst()
             self?.fiveDayForecast = Array((forecast.prefix(5)))
             
-            DispatchQueue.main.async {
-                // Configure the view controller's views
-                self?.degreeLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.forTheDay))
-                self?.weatherLabel.text = weather.currentWeather.description.first?.type
-                self?.minTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.minTemperature))
-                self?.maxTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.maxTemperature))
-                self?.currentTempLabel.text = String(Int(weather.currentWeather.temperature))
-                self?.viewsSet = true
-                self?.setupBackground(type: weather.currentWeather.description.first!.type)
-            }
+            self?.updateViews(weather: weather)
+            
+//            DispatchQueue.main.async {
+//                // Configure the view controller's views
+//                self?.degreeLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.forTheDay))
+//                self?.weatherLabel.text = weather.currentWeather.description.first?.type
+//                self?.minTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.minTemperature))
+//                self?.maxTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.maxTemperature))
+//                self?.currentTempLabel.text = String(Int(weather.currentWeather.temperature))
+//                self?.viewsSet = true
+//                self?.setupBackground(type: weather.currentWeather.description.first!.type)
+//            }
         }
+    }
+    
+    /// Changes the background in response to forecast
+    @MainActor
+    fileprivate func updateViews(weather: WeatherForecast) {
+        // Configure the view controller's views
+        degreeLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.forTheDay))
+        weatherLabel.text = weather.currentWeather.description.first?.type
+        minTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.minTemperature))
+        maxTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.maxTemperature))
+        currentTempLabel.text = String(Int(weather.currentWeather.temperature))
+        viewsSet = true
+        setupBackground(type: weather.currentWeather.description.first!.type)
     }
     
     /// Changes the background in response to forecast
