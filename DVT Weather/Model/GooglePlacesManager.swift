@@ -24,7 +24,7 @@ class GooglePlacesManager {
     private let client = GMSPlacesClient.shared()
     
     enum PlacesError: Error {
-        case failedToFind
+        case failedToFindData
         case failedToGetCoordinates
     }
     
@@ -37,7 +37,7 @@ class GooglePlacesManager {
         client.findAutocompletePredictions(fromQuery: query, filter: filter, sessionToken: nil) {
             results, error in
             guard let results = results, error == nil else {
-                completion(.failure(PlacesError.failedToFind))
+                completion(.failure(PlacesError.failedToFindData))
                 return
             }
             
@@ -57,8 +57,8 @@ class GooglePlacesManager {
         // Method that finds information reletad to the selected place
         client.fetchPlace(fromPlaceID: place.identifier, placeFields: fields, sessionToken: nil) {
             googlePlace, error in
-            guard let googlePlace = googlePlace, error == nil else {
-                print("Error: \(error!)")
+            guard let googlePlace = googlePlace else {
+                print("Error: Could not get places")
                 completion(.failure(PlacesError.failedToGetCoordinates))
                 return
             }

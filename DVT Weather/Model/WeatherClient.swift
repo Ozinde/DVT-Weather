@@ -22,41 +22,42 @@ class WeatherClient {
             }
         }
         
-        var url: URL {
-            return URL(string: stringValue)!
+        var url: URL? {
+            guard let url = URL(string: stringValue) else {
+                return nil
+            }
+            return url
         }
-        
     }
     
-    /// Function that contacts the Weather API and receives forecast information
-    class func getCurrentWeather(latitude: Double, longitude: Double, completion: @escaping (WeatherForecast?, Error?) -> Void) {
+    class func getWeatherObjects(latitude: Double, longitude: Double) async throws -> WeatherForecast {
         
-        let request = URLRequest(url: EndPoints.getCurrentWeather(latitude, longitude).url)
-        
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            guard let data = data else {
-                // Give an error if there was a problem receiving data from the API
-                completion(nil, WeatherRequestErrors.couldNotGetWeatherData)
-                print("No items")
-                return
-            }
-            
-            let decoder = JSONDecoder()
-            do {
-                let responseObject = try decoder.decode(WeatherForecast.self, from: data)
-                // Data from the API is made available here
-                completion(responseObject, nil)
-            } catch {
-                completion(nil, WeatherRequestErrors.couldNotGetWeather)
-                print("Error parsign weather data")
-            }
+        guard let request = EndPoints.getCurrentWeather(latitude, longitude).url else {
+            throw WeatherRequestErrors.invalidURL
         }
-        task.resume()
+        
+        let (data, response) = try await URLSession.shared.data(from: request)
+        
+        guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+            throw WeatherRequestErrors.couldNotGetWeather
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            return try decoder.decode(WeatherForecast.self, from: data)
+            // Data from the API is made available here
+        } catch {
+            print("Error parsign weather data")
+            throw WeatherRequestErrors.couldNotGetWeatherData
+        }
+        
     }
 }
 
 //Enum that holds error cases
 enum WeatherRequestErrors: Error {
+    case invalidURL
     case couldNotGetWeather
     case couldNotGetWeatherData
 }
+

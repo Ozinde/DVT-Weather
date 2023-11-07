@@ -196,7 +196,7 @@ class MapController: UIViewController, UIGestureRecognizerDelegate {
             }
         }
         
-        let queue = DispatchQueue(label: "Network")
+        let queue = DispatchQueue(label: "Network2")
         monitor.start(queue: queue)
     }
 
@@ -237,7 +237,8 @@ extension MapController: CLLocationManagerDelegate {
             print("Location status is OK.")
             manager.requestLocation()
         @unknown default:
-            fatalError()
+            print("Error with location")
+            showFailure(message: "Unable to access your location.")
         }
     }
     

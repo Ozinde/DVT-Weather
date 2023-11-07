@@ -15,6 +15,7 @@ class HomeController: UIViewController {
     private var fiveDayForecast = [ForecastObject]()
     private var locationManager: CLLocationManager!
     private var contentViewColour = UIColor()
+    var weather: WeatherForecast?
     var cityName = String()
     var latitude = Double()
     var longitude = Double()
@@ -81,71 +82,51 @@ class HomeController: UIViewController {
     
     // MARK: Functions
     
-    /// Function to monitor network changes and react accordingly
-    fileprivate func checkNetwork() {
-        let monitor = NWPathMonitor()
-        
-        monitor.pathUpdateHandler = {
-            path in
-            
-            if path.status != .satisfied {
-                
-                DispatchQueue.main.async {
-                    self.showFailure(message: "Please connect to a network")
-                }
-            } else {
-                print("There is an internet connection")
-            }
-        }
-        
-        let queue = DispatchQueue(label: "Network")
-        monitor.start(queue: queue)
-    }
-    
     /// Function that retrieves weather information
     fileprivate func getCurrentWeather(coordinates: CLLocationCoordinate2D) {
-        WeatherClient.getCurrentWeather(latitude: coordinates.latitude, longitude: coordinates.longitude) { [weak self] weather, error in
-            
-            guard let weather = weather, error == nil else {
-                // No weather information received from the API
-                print("Didnt get weather information")
-                print(error?.localizedDescription.first ?? "")
-                self?.animateActivityIndicator(should: false)
-                if let errorDescription = error?.localizedDescription {
-                    self?.showFailure(message: errorDescription)
-                } else {
-                    self?.showFailure(message: "An unknown error occured.")
+        
+        Task {
+            do {
+                weather = try await WeatherClient.getWeatherObjects(latitude: coordinates.latitude, longitude: coordinates.longitude)
+                
+                guard let weather = weather else {
+                    return
                 }
-                return
+                
+                var forecast = [ForecastObject]()
+                for item in weather.dailyWeather {
+                    // Iterate over the items to populate the 5 day forecast
+                    let date = NSDate(timeIntervalSince1970: Double(item.date))
+                    let day = dayOfWeek(date: date as Date)
+                    guard let day = day, let description = item.description.first else {
+                        return
+                    }
+                    
+                    let dayForecast = ForecastObject(day: day, weatherType: description.type, temperature: Int(item.dayTemperature.forTheDay))
+                    forecast.append(dayForecast)
+                }
+                
+                forecast.removeFirst()
+                fiveDayForecast = Array((forecast.prefix(5)))
+                
+                updateViews(weather: weather)
+            } catch WeatherRequestErrors.invalidURL {
+                animateActivityIndicator(should: false)
+                showFailure(message: "An incorrect URL was used.")
+            } catch WeatherRequestErrors.couldNotGetWeather {
+                animateActivityIndicator(should: false)
+                showFailure(message: "Weather information could not be found.")
+            } catch WeatherRequestErrors.couldNotGetWeatherData {
+                animateActivityIndicator(should: false)
+                showFailure(message: "Weather information unavailable.")
+            } catch {
+                animateActivityIndicator(should: false)
+                showFailure(message: "An unknown error occured.")
             }
-            var forecast = [ForecastObject]()
-            for item in weather.dailyWeather {
-                // Iterate over the items to populate the 5 day forecast
-                let date = NSDate(timeIntervalSince1970: Double(item.date))
-                let day = self?.dayOfWeek(date: date as Date)
-                let dayForecast = ForecastObject(day: day!, weatherType: item.description.first!.type, temperature: Int(item.dayTemperature.forTheDay))
-                forecast.append(dayForecast)
-            }
-            
-            forecast.removeFirst()
-            self?.fiveDayForecast = Array((forecast.prefix(5)))
-            
-            self?.updateViews(weather: weather)
-            
-//            DispatchQueue.main.async {
-//                // Configure the view controller's views
-//                self?.degreeLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.forTheDay))
-//                self?.weatherLabel.text = weather.currentWeather.description.first?.type
-//                self?.minTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.minTemperature))
-//                self?.maxTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.maxTemperature))
-//                self?.currentTempLabel.text = String(Int(weather.currentWeather.temperature))
-//                self?.viewsSet = true
-//                self?.setupBackground(type: weather.currentWeather.description.first!.type)
-//            }
         }
     }
     
-    /// Changes the background in response to forecast
+    /// Updates views on the main thread
     @MainActor
     fileprivate func updateViews(weather: WeatherForecast) {
         // Configure the view controller's views
@@ -166,27 +147,52 @@ class HomeController: UIViewController {
         case "Clear":
             backgroundImage.image = UIImage(named: "forest_sunny")
             backgroundView.backgroundColor = UIColor(named: "sunny")
-            contentViewColour = UIColor(named: "sunny")!
+            if let colour = UIColor(named: "sunny") {
+                contentViewColour = colour
+            } else {
+                contentViewColour = UIColor.green
+            }
         case "Rain":
             backgroundImage.image = UIImage(named: "forest_rainy")
             backgroundView.backgroundColor = UIColor(named: "rainy")
-            contentViewColour = UIColor(named: "rainy")!
+            if let colour = UIColor(named: "rainy") {
+                contentViewColour = colour
+            } else {
+                contentViewColour = UIColor.lightGray
+            }
         case "Clouds":
             backgroundImage.image = UIImage(named: "forest_cloudy")
             backgroundView.backgroundColor = UIColor(named: "cloudy")
-            contentViewColour = UIColor(named: "cloudy")!
+            if let colour = UIColor(named: "cloudy") {
+                contentViewColour = colour
+            } else {
+                contentViewColour = UIColor.systemGray
+            }
         case "Snow":
             backgroundImage.image = UIImage(named: "forest_snowy")
             backgroundView.backgroundColor = UIColor(named: "snow")
-            contentViewColour = UIColor(named: "snow")!
+            if let colour = UIColor(named: "snow") {
+                contentViewColour = colour
+            } else {
+                contentViewColour = UIColor.systemIndigo
+            }
         case "Fog":
             backgroundImage.image = UIImage(named: "forest_foggy")
             backgroundView.backgroundColor = UIColor(named: "fog")
-            contentViewColour = UIColor(named: "fog")!
+            if let colour = UIColor(named: "fog") {
+                contentViewColour = colour
+            } else {
+                contentViewColour = UIColor.darkGray
+            }
         default:
             backgroundImage.image = UIImage(named: "forest_sunny")
             backgroundView.backgroundColor = UIColor(named: "sunny")
-            contentViewColour = UIColor(named: "sunny")!
+            if let colour = UIColor(named: "sunny") {
+                contentViewColour = colour
+            } else {
+                contentViewColour = UIColor.green
+            }
+            print("Weather Type unaccounted for.")
         }
     }
     
@@ -349,7 +355,9 @@ extension HomeController: CLLocationManagerDelegate {
             manager.desiredAccuracy = kCLLocationAccuracyBest
             animateActivityIndicator(should: true)
         @unknown default:
-            fatalError()
+            print("Error with location")
+            showFailure(message: "Unable to access your location.")
+            
         }
     }
     

@@ -17,7 +17,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         DataController.shared.load()
-        GMSPlacesClient.provideAPIKey("AIzaSyC2b_U9Qna5RU7PDD5TPAUounq6Nn9C9S0")
+        GMSPlacesClient.provideAPIKey("AIzaSyCkb6jeo6Ze-c1cunuy7f6wp-ruNc4pM78")
         return true
     }
 

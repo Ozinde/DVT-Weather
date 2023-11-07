@@ -21,7 +21,7 @@ class FavoritesController: UITableViewController, UISearchResultsUpdating {
     private var fetchedResultsController: NSFetchedResultsController<Location>!
     private var savedLocations: [Location] = []
     private var selectedIndex = 0
-    private var NetworkCheck = false
+    private var networkCheck = false
     
     // MARK: Lifecycle Functions
 
@@ -87,7 +87,7 @@ class FavoritesController: UITableViewController, UISearchResultsUpdating {
     /// Function that sets up background view of table
     fileprivate func backgroundSetup() {
         let view = NoDataView(frame: CGRect(x: 0, y: 0, width: tableView.frame.width, height: tableView.frame.height))
-        view.set(title: "No Saved Location", desc: "Search for a location and tap on it to save it to Favorites.")
+        view.set(title: "No Saved Locations", desc: "Search for a location and tap on it to save it to Favorites.")
         tableView.backgroundView = view
     }
     
@@ -159,11 +159,11 @@ class FavoritesController: UITableViewController, UISearchResultsUpdating {
             if path.status != .satisfied {
                 
                 DispatchQueue.main.async {
-                    self.NetworkCheck = false
+                    self.networkCheck = false
                 }
             } else {
                 print("There is an internet connection")
-                self.NetworkCheck = true
+                self.networkCheck = true
             }
         }
         
@@ -181,7 +181,11 @@ class FavoritesController: UITableViewController, UISearchResultsUpdating {
     /// Configure each table view cell
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "favoriteLocation", for: indexPath)
-        let location = fetchedResultsController.fetchedObjects![indexPath.row]
+        guard let objects = fetchedResultsController.fetchedObjects else {
+            return cell
+        }
+        
+        let location = objects[indexPath.row]
         
         cell.textLabel?.text = location.name
         return cell
@@ -192,7 +196,10 @@ class FavoritesController: UITableViewController, UISearchResultsUpdating {
         switch editingStyle {
         case .delete:
             deleteLocation(at: indexPath)
-            if fetchedResultsController.fetchedObjects!.count == 0 {
+            guard let objects = fetchedResultsController.fetchedObjects else {
+                return
+            }
+            if objects.count == 0 {
                 updateEditButtonState()
             }
         default: () // Unsupported
@@ -203,17 +210,29 @@ class FavoritesController: UITableViewController, UISearchResultsUpdating {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
-        if NetworkCheck {
+        if networkCheck {
             selectedIndex = indexPath.item
             tapVibe()
+            
             // Segue to the HomeController with the coordinates of the saved location
-            let location = fetchedResultsController.fetchedObjects![selectedIndex]
+            guard let objects = fetchedResultsController.fetchedObjects else {
+                return
+            }
+            
+            let location = objects[selectedIndex]
             let navController = storyboard?.instantiateViewController(withIdentifier: "NavHomeController") as! UINavigationController
-            let vc = navController.topViewController as! HomeController
+            
+            guard let vc = navController.topViewController as? HomeController else {
+                return
+            }
+            
             vc.favoriteCheck = true
-            print("Name \(location.name!)")
-            print("Lat \(location.latitude)")
-            print("long \(location.longitude)")
+            if let locationName = location.name {
+                vc.cityName = locationName
+            } else {
+                vc.cityName = "Name Unavailable"
+            }
+            
             vc.cityName = location.name!
             vc.latitude = location.latitude
             vc.longitude = location.longitude
@@ -274,7 +293,8 @@ extension FavoritesController: NSFetchedResultsControllerDelegate {
         case .move:
             tableView.moveRow(at: indexPath!, to: newIndexPath!)
         @unknown default:
-            fatalError()
+            print("Error with table item edits")
+            showFailure(message: "Unable to complete edit.")
         }
     }
     
@@ -285,9 +305,10 @@ extension FavoritesController: NSFetchedResultsControllerDelegate {
         case .insert: tableView.insertSections(indexSet, with: .fade)
         case .delete: tableView.deleteSections(indexSet, with: .fade)
         case .update, .move:
-            fatalError("Invalid change type in controller(_:didChange:atSectionIndex:for:). Only .insert or .delete should be possible.")
+            print("Invalid change type in controller(_:didChange:atSectionIndex:for:). Only .insert or .delete should be possible.")
         @unknown default:
-            fatalError()
+            print("Error with table section edits")
+            showFailure(message: "Unable to complete edit.")
         }
     }
 
