@@ -25,7 +25,12 @@ class SplashController: UIViewController {
     
     /// Present Home Screen
     func presentHome() {
-        let vc = self.storyboard!.instantiateViewController(withIdentifier: "TabController")
+        
+        guard let storyboard = storyboard else {
+            return
+        }
+        
+        let vc = storyboard.instantiateViewController(withIdentifier: "TabController")
         vc.modalTransitionStyle = .flipHorizontal
         vc.modalPresentationStyle = .fullScreen
         self.present(vc, animated: true, completion: nil)

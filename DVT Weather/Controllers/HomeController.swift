@@ -68,10 +68,10 @@ class HomeController: UIViewController {
     @IBOutlet weak var degreeLabel: UILabel!
     @IBOutlet weak var weatherLabel: UILabel!
     @IBOutlet weak var minTempLabel: UILabel!
-    @IBOutlet weak var currentTempLabel: UILabel!
+    @IBOutlet weak var dayTempLabel: UILabel!
     @IBOutlet weak var maxTempLabel: UILabel!
     @IBOutlet weak var minLabel: UILabel!
-    @IBOutlet weak var currentLabel: UILabel!
+    @IBOutlet weak var dayLabel: UILabel!
     @IBOutlet weak var maxLabel: UILabel!
     @IBOutlet weak var backgroundImage: UIImageView!
     @IBOutlet weak var backgroundView: UIView!
@@ -186,10 +186,10 @@ class HomeController: UIViewController {
         
         // Configure the view controller's views
         weatherLabel.text = type
-        degreeLabel.text = String(dayTemp)
+        degreeLabel.text = String(currentTemp)
         minTempLabel.text = String(minTemp)
         maxTempLabel.text = String(maxTemp)
-        currentTempLabel.text = String(currentTemp)
+        dayTempLabel.text = String(dayTemp)
         viewsSet = true
         setupBackground(type: type)
         
@@ -225,10 +225,10 @@ class HomeController: UIViewController {
                     self.setupBackground(type: type)
                     self.weatherLabel.text = type
                     self.offlineTime.text = lastUpdate
-                    self.degreeLabel.text = String(forecast.dayTemp)
+                    self.degreeLabel.text = String(forecast.currentTemp)
                     self.minTempLabel.text = String(forecast.minTemp)
                     self.maxTempLabel.text = String(forecast.maxTemp)
-                    self.currentTempLabel.text = String(forecast.currentTemp)
+                    self.dayTempLabel.text = String(forecast.dayTemp)
                     self.activityIndicator.isHidden = true
                     self.activityIndicator.stopAnimating()
                     self.symbolOne.isHidden = false
@@ -236,14 +236,14 @@ class HomeController: UIViewController {
                     self.symbolThree.isHidden = false
                     self.symbolFour.isHidden = false
                     self.degreeLabel.isHidden = false
-                    self.currentTempLabel.isHidden = false
+                    self.dayTempLabel.isHidden = false
                     self.minTempLabel.isHidden = false
                     self.maxTempLabel.isHidden = false
-                    self.currentLabel.text = "current"
+                    self.dayLabel.text = "current"
                     self.minLabel.text = "min"
                     self.maxLabel.text = "max"
                     self.weatherLabel.isHidden = false
-                    self.currentLabel.text = "current"
+                    self.dayLabel.text = "current"
                     self.offlineView.isHidden = false
                 }
             } else {
@@ -411,10 +411,10 @@ class HomeController: UIViewController {
             degreeLabel.isHidden = true
             weatherLabel.text = "Loading..."
             
-            currentLabel.text = "..."
+            dayLabel.text = "..."
             minLabel.text = "..."
             maxLabel.text = "..."
-            currentTempLabel.isHidden = true
+            dayTempLabel.isHidden = true
             minTempLabel.isHidden = true
             maxTempLabel.isHidden = true
             
@@ -426,10 +426,10 @@ class HomeController: UIViewController {
             tableView.isHidden = false
             degreeLabel.isHidden = false
             
-            currentTempLabel.isHidden = false
+            dayTempLabel.isHidden = false
             minTempLabel.isHidden = false
             maxTempLabel.isHidden = false
-            currentLabel.text = "current"
+            dayLabel.text = "day"
             minLabel.text = "min"
             maxLabel.text = "max"
             
