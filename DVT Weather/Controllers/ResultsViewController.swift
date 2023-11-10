@@ -10,9 +10,11 @@ import CoreLocation
 
 class ResultsViewController: UIViewController {
     
+    /// Variables
     var delegate: ResultsViewControllerDelegate?
     private var places: [Place] = []
     
+    /// Constants
     private let tableView: UITableView = {
         let table = UITableView()
         table.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
