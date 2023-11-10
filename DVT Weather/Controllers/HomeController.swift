@@ -49,6 +49,7 @@ class HomeController: UIViewController {
         didSet {
             DispatchQueue.main.async {
                 self.animateActivityIndicator(should: false)
+                self.navigationItem.leftBarButtonItem?.isEnabled = true
                 self.tableView.reloadData()
                 
                 if self.favoriteCheck || self.mapCheck {
@@ -84,6 +85,22 @@ class HomeController: UIViewController {
     @IBOutlet weak var offlineTime: UILabel!
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
     
+    /// Actions
+    @IBAction func cameraTapped(_ sender: UIButton) {
+        tapVibe()
+        
+        guard let storyboard = storyboard else {
+            return
+        }
+        
+        let vc = storyboard.instantiateViewController(withIdentifier: "PhotosController") as! PhotosController
+        vc.coordinate = coordinate
+        vc.cityname = cityName
+        vc.modalTransitionStyle = .flipHorizontal
+        vc.modalPresentationStyle = .fullScreen
+        self.present(vc, animated: true, completion: nil)
+    }
+    
     // MARK: Lifecycle Functions
 
     override func viewDidLoad() {
@@ -92,6 +109,8 @@ class HomeController: UIViewController {
         tableView.dataSource = self
         setupFetchedResultsController()
         checkNetwork()
+        animateActivityIndicator(should: true)
+        navigationItem.leftBarButtonItem?.isEnabled = false
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -113,6 +132,7 @@ class HomeController: UIViewController {
                     self.showFailure(message: "Please check your network connection.")
                     self.showOfflineView()
                     self.offlineCheck = true
+                    self.navigationItem.leftBarButtonItem?.isEnabled = false
                 }
             } else {
                 print("There is an internet connection")
@@ -547,6 +567,9 @@ extension HomeController: CLLocationManagerDelegate {
             print("Location access was restricted.")
         case .denied:
             showPermissionMessage()
+            self.activityIndicator.isHidden = true
+            self.activityIndicator.stopAnimating()
+            weatherLabel.text = "..."
             print("User denied access to location.")
         case .notDetermined:
             print("Location status not determined.")
