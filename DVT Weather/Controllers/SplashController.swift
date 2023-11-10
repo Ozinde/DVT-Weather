@@ -29,8 +29,6 @@ class SplashController: UIViewController {
         vc.modalTransitionStyle = .flipHorizontal
         vc.modalPresentationStyle = .fullScreen
         self.present(vc, animated: true, completion: nil)
-    
-        print("B")
     }
     
     func animateView(desiredView: UIView) {
@@ -40,6 +38,4 @@ class SplashController: UIViewController {
             self.presentHome()
         }
     }
-
-
 }

@@ -30,12 +30,14 @@ class WeatherClient {
         }
     }
     
+    /// Function for obtaining a weather forecast
     class func getWeatherObjects(latitude: Double, longitude: Double) async throws -> WeatherForecast {
         
         guard let request = EndPoints.getCurrentWeather(latitude, longitude).url else {
             throw WeatherRequestErrors.invalidURL
         }
         
+        //URL is used to make a network request
         let (data, response) = try await URLSession.shared.data(from: request)
         
         guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
@@ -43,11 +45,11 @@ class WeatherClient {
         }
         
         do {
+            // Data from the API is made available here
             let decoder = JSONDecoder()
             return try decoder.decode(WeatherForecast.self, from: data)
-            // Data from the API is made available here
         } catch {
-            print("Error parsign weather data")
+            print("Error parsing weather data")
             throw WeatherRequestErrors.couldNotGetWeatherData
         }
         

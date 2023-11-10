@@ -136,7 +136,7 @@ class MapController: UIViewController, UIGestureRecognizerDelegate {
         }
     }
     
-    /// Set up Core Data results
+    /// Setup Core Data results
     fileprivate func setupFetchedResultsController() {
         // Find Objects with Location entity name
         let fetchRequest:NSFetchRequest<Location> = Location.fetchRequest()
@@ -196,7 +196,7 @@ class MapController: UIViewController, UIGestureRecognizerDelegate {
             }
         }
         
-        let queue = DispatchQueue(label: "Network2")
+        let queue = DispatchQueue(label: "Network")
         monitor.start(queue: queue)
     }
 
@@ -301,9 +301,10 @@ extension MapController: MKMapViewDelegate {
                 
                 self.tapVibe()
                 
-                // Segue to the HomeController with coordinates of the pin's location
-                let navController = self.storyboard?.instantiateViewController(withIdentifier: "NavHomeController") as! UINavigationController
-                let vc = navController.topViewController as! HomeController
+                guard let navController = self.storyboard?.instantiateViewController(withIdentifier: "NavHomeController") as? UINavigationController, let vc = navController.topViewController as? HomeController else {
+                    return
+                }
+                
                 vc.mapCheck = true
                 vc.latitude = coordinate.latitude
                 vc.longitude = coordinate.longitude

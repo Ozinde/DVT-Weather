@@ -117,7 +117,8 @@ class FavoritesController: UITableViewController, UISearchResultsUpdating {
             // Fetch results
             try fetchedResultsController.performFetch()
         } catch {
-            fatalError("The fetch could not be performed: \(error.localizedDescription)")
+            print("Error with Core Data")
+            showFailure(message: "Could not retrieve saved locations")
         }
     }
     
@@ -220,9 +221,8 @@ class FavoritesController: UITableViewController, UISearchResultsUpdating {
             }
             
             let location = objects[selectedIndex]
-            let navController = storyboard?.instantiateViewController(withIdentifier: "NavHomeController") as! UINavigationController
             
-            guard let vc = navController.topViewController as? HomeController else {
+            guard let navController = self.storyboard?.instantiateViewController(withIdentifier: "NavHomeController") as? UINavigationController, let vc = navController.topViewController as? HomeController else {
                 return
             }
             
@@ -271,7 +271,6 @@ extension FavoritesController: ResultsViewControllerDelegate {
         } catch {
             print("Could not save favourite location")
         }
-        
     }
 }
 
