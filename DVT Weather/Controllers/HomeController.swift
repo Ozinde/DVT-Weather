@@ -6,21 +6,45 @@
 //
 
 import UIKit
-import CoreLocation
 import Network
+import CoreLocation
+import CoreData
 
 class HomeController: UIViewController {
     
     /// Variables
     private var fiveDayForecast = [ForecastObject]()
     private var locationManager: CLLocationManager!
+    private var coordinate = CLLocationCoordinate2D()
     private var contentViewColour = UIColor()
+    private var fetchedResultsController: NSFetchedResultsController<OfflineForecast>!
     var weather: WeatherForecast?
     var cityName = String()
     var latitude = Double()
     var longitude = Double()
     var favoriteCheck = false
     var mapCheck = false
+    private var offlineCheck = false
+    private var onlineCheck = false {
+        didSet {
+            DispatchQueue.main.async {
+                if self.favoriteCheck == false && self.mapCheck == false {
+                    // Location manager used to get users current location
+                    self.locationManager = CLLocationManager()
+                    self.locationManager.delegate = self
+                    self.locationManager.requestWhenInUseAuthorization()
+                    
+                } else {
+                    // Methods that respond to segue from MapController or FavoritesController
+                    self.coordinate = CLLocationCoordinate2D(latitude: self.latitude, longitude: self.longitude)
+                    self.animateActivityIndicator(should: true)
+                    if self.offlineCheck == false {
+                        self.getCurrentWeather(coordinates: self.coordinate)
+                    }
+                }
+            }
+        }
+    }
     private var viewsSet: Bool! {
         didSet {
             DispatchQueue.main.async {
@@ -56,6 +80,8 @@ class HomeController: UIViewController {
     @IBOutlet weak var symbolThree: UIImageView!
     @IBOutlet weak var symbolFour: UIImageView!
     @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var offlineView: UIView!
+    @IBOutlet weak var offlineTime: UILabel!
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
     
     // MARK: Lifecycle Functions
@@ -64,23 +90,40 @@ class HomeController: UIViewController {
         super.viewDidLoad()
         
         tableView.dataSource = self
-        monitorNetwork()
-        
-        if self.favoriteCheck == false && self.mapCheck == false {
-            // Location manager used to get users current location
-            self.locationManager = CLLocationManager()
-            self.locationManager.delegate = self
-            self.locationManager.requestWhenInUseAuthorization()
-            
-        } else {
-            // Methods in respond to segue from MapController or FavoritesController
-            let coordinate = CLLocationCoordinate2D(latitude: self.latitude, longitude: self.longitude)
-            self.getCurrentWeather(coordinates: coordinate)
-            self.animateActivityIndicator(should: true)
-        }
+        setupFetchedResultsController()
+        checkNetwork()
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        // Set fetchedResultsController to nil to save memory
+        fetchedResultsController = nil
     }
     
     // MARK: Functions
+    
+    /// Function that monitors the network
+    func checkNetwork() {
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = {
+            path in
+            if path.status != .satisfied {
+                DispatchQueue.main.async {
+                    //Display offline forecast
+                    self.showFailure(message: "Please check your network connection.")
+                    self.showOfflineView()
+                    self.offlineCheck = true
+                }
+            } else {
+                print("There is an internet connection")
+                self.offlineCheck = false
+                self.onlineCheck = true
+            }
+        }
+        
+        let queue = DispatchQueue(label: "Network")
+        monitor.start(queue: queue)
+    }
     
     /// Function that retrieves weather information
     fileprivate func getCurrentWeather(coordinates: CLLocationCoordinate2D) {
@@ -108,8 +151,9 @@ class HomeController: UIViewController {
                 
                 forecast.removeFirst()
                 fiveDayForecast = Array((forecast.prefix(5)))
-                
                 updateViews(weather: weather)
+              
+                // Catch block
             } catch WeatherRequestErrors.invalidURL {
                 animateActivityIndicator(should: false)
                 showFailure(message: "An incorrect URL was used.")
@@ -129,14 +173,147 @@ class HomeController: UIViewController {
     /// Updates views on the main thread
     @MainActor
     fileprivate func updateViews(weather: WeatherForecast) {
+        
+        guard let forecast = weather.dailyWeather.first, let description = weather.currentWeather.description.first else {
+            return
+        }
+        
+        let type = description.type
+        let dayTemp = Int(forecast.dayTemperature.forTheDay)
+        let minTemp = Int(forecast.dayTemperature.minTemperature)
+        let maxTemp = Int(forecast.dayTemperature.maxTemperature)
+        let currentTemp = Int(weather.currentWeather.temperature)
+        
         // Configure the view controller's views
-        degreeLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.forTheDay))
-        weatherLabel.text = weather.currentWeather.description.first?.type
-        minTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.minTemperature))
-        maxTempLabel.text = String(Int(weather.dailyWeather.first!.dayTemperature.maxTemperature))
-        currentTempLabel.text = String(Int(weather.currentWeather.temperature))
+        weatherLabel.text = type
+        degreeLabel.text = String(dayTemp)
+        minTempLabel.text = String(minTemp)
+        maxTempLabel.text = String(maxTemp)
+        currentTempLabel.text = String(currentTemp)
         viewsSet = true
-        setupBackground(type: weather.currentWeather.description.first!.type)
+        setupBackground(type: type)
+        
+        // Save forecast to Core Data
+        if self.favoriteCheck == false && self.mapCheck == false {
+            saveOfflineForecast(name: cityName, type: type, dayTemp: dayTemp, minTemp: minTemp, maxTemp: maxTemp, currentTemp: currentTemp)
+        }
+    }
+    
+    /// Updates views for offline mode
+    fileprivate func showOfflineView() {
+        
+        guard let results = fetchedResultsController else {
+            return
+        }
+        
+        if let savedForecast = results.fetchedObjects {
+            
+            // Check for saved forecast
+            if let forecast = savedForecast.first {
+                
+                guard let type = forecast.weatherType, let date = forecast.saveDate else {
+                    return
+                }
+                
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy/MM/dd \nHH:mm"
+                let lastUpdate = dateFormatter.string(from: date)
+                
+                // Display views on main thread
+                DispatchQueue.main.async {
+                    self.navigationItem.title = forecast.name
+                    self.setupBackground(type: type)
+                    self.weatherLabel.text = type
+                    self.offlineTime.text = lastUpdate
+                    self.degreeLabel.text = String(forecast.dayTemp)
+                    self.minTempLabel.text = String(forecast.minTemp)
+                    self.maxTempLabel.text = String(forecast.maxTemp)
+                    self.currentTempLabel.text = String(forecast.currentTemp)
+                    self.activityIndicator.isHidden = true
+                    self.activityIndicator.stopAnimating()
+                    self.symbolOne.isHidden = false
+                    self.symbolTwo.isHidden = false
+                    self.symbolThree.isHidden = false
+                    self.symbolFour.isHidden = false
+                    self.degreeLabel.isHidden = false
+                    self.currentTempLabel.isHidden = false
+                    self.minTempLabel.isHidden = false
+                    self.maxTempLabel.isHidden = false
+                    self.currentLabel.text = "current"
+                    self.minLabel.text = "min"
+                    self.maxLabel.text = "max"
+                    self.weatherLabel.isHidden = false
+                    self.currentLabel.text = "current"
+                    self.offlineView.isHidden = false
+                }
+            } else {
+                print("No saved forecast")
+            }
+        } else {
+            showFailure(message: "Offline forecast unavailable")
+        }
+    }
+    
+    /// Setup saved data
+    fileprivate func saveOfflineForecast(name: String, type: String, dayTemp: Int, minTemp: Int, maxTemp: Int, currentTemp: Int) {
+        
+        guard let results = fetchedResultsController else {
+            return
+        }
+        
+        // Check for saved data
+        if let savedForecast = results.fetchedObjects {
+            
+            // Save first offline forecast
+            if savedForecast.count == 0 {
+                // Save new information
+                let forecast = OfflineForecast(context: DataController.shared.viewContext)
+                setOfflineData(forecast: forecast, name: name, type: type, dayTemp: dayTemp, minTemp: minTemp, maxTemp: maxTemp, currentTemp: currentTemp)
+                
+                do {
+                    try DataController.shared.viewContext.save()
+                    print("Offline saved")
+                    
+                } catch {
+                    print("Could not save offline information")
+                }
+            } else {
+                // Update old information
+                print("Offline count: \(savedForecast.count)")
+                if let forecast = savedForecast.first {
+                    setOfflineData(forecast: forecast, name: name, type: type, dayTemp: dayTemp, minTemp: minTemp, maxTemp: maxTemp, currentTemp: currentTemp)
+                    if DataController.shared.viewContext.hasChanges {
+                        print("Update")
+                        
+                        do {
+                            try DataController.shared.viewContext.save()
+                            print("Offline saved")
+                            
+                        } catch {
+                            print("Could not save offline information")
+                        }
+                        
+                    } else {
+                        print("No offline changes")
+                    }
+                    
+                } else {
+                    print("No saved forecast")
+                }
+            }
+        }
+    }
+    
+    /// Helper function to save forecast
+    fileprivate func setOfflineData(forecast: OfflineForecast, name: String, type: String, dayTemp: Int, minTemp: Int, maxTemp: Int, currentTemp: Int) {
+        
+        forecast.name = name
+        forecast.weatherType = type
+        forecast.saveDate = Date()
+        forecast.dayTemp = numericCast(dayTemp)
+        forecast.minTemp = numericCast(minTemp)
+        forecast.maxTemp = numericCast(maxTemp)
+        forecast.currentTemp = numericCast(currentTemp)
     }
     
     /// Changes the background in response to forecast
@@ -147,6 +324,7 @@ class HomeController: UIViewController {
         case "Clear":
             backgroundImage.image = UIImage(named: "forest_sunny")
             backgroundView.backgroundColor = UIColor(named: "sunny")
+            offlineView.backgroundColor = UIColor(named: "sunny")
             if let colour = UIColor(named: "sunny") {
                 contentViewColour = colour
             } else {
@@ -155,6 +333,7 @@ class HomeController: UIViewController {
         case "Rain":
             backgroundImage.image = UIImage(named: "forest_rainy")
             backgroundView.backgroundColor = UIColor(named: "rainy")
+            offlineView.backgroundColor = UIColor(named: "rainy")
             if let colour = UIColor(named: "rainy") {
                 contentViewColour = colour
             } else {
@@ -163,6 +342,7 @@ class HomeController: UIViewController {
         case "Clouds":
             backgroundImage.image = UIImage(named: "forest_cloudy")
             backgroundView.backgroundColor = UIColor(named: "cloudy")
+            offlineView.backgroundColor = UIColor(named: "cloudy")
             if let colour = UIColor(named: "cloudy") {
                 contentViewColour = colour
             } else {
@@ -171,6 +351,7 @@ class HomeController: UIViewController {
         case "Snow":
             backgroundImage.image = UIImage(named: "forest_snowy")
             backgroundView.backgroundColor = UIColor(named: "snow")
+            offlineView.backgroundColor = UIColor(named: "snow")
             if let colour = UIColor(named: "snow") {
                 contentViewColour = colour
             } else {
@@ -179,6 +360,7 @@ class HomeController: UIViewController {
         case "Fog":
             backgroundImage.image = UIImage(named: "forest_foggy")
             backgroundView.backgroundColor = UIColor(named: "fog")
+            offlineView.backgroundColor = UIColor(named: "fog")
             if let colour = UIColor(named: "fog") {
                 contentViewColour = colour
             } else {
@@ -187,6 +369,7 @@ class HomeController: UIViewController {
         default:
             backgroundImage.image = UIImage(named: "forest_sunny")
             backgroundView.backgroundColor = UIColor(named: "sunny")
+            offlineView.backgroundColor = UIColor(named: "sunny")
             if let colour = UIColor(named: "sunny") {
                 contentViewColour = colour
             } else {
@@ -205,6 +388,7 @@ class HomeController: UIViewController {
     
     /// Function to control the activity indicator
     fileprivate func animateActivityIndicator(should: Bool) {
+        self.offlineView.isHidden = true
         if should {
             DispatchQueue.main.async {
                 self.activityIndicator.isHidden = false
@@ -268,10 +452,31 @@ class HomeController: UIViewController {
                 return
             }
             
-            self.navigationItem.title = placemark.locality
+            if let city = placemark.locality {
+                self.cityName = city
+                self.navigationItem.title = self.cityName
+            }
+            
         }
     }
-
+    
+    /// Setup saved data
+    fileprivate func setupFetchedResultsController() {
+        // Find Objects with Location entity name
+        let fetchRequest:NSFetchRequest<OfflineForecast> = OfflineForecast.fetchRequest()
+        // Arrange the items in ascending order
+        let sortDescriptor = NSSortDescriptor(key: #keyPath(OfflineForecast.name), ascending: true)
+        fetchRequest.sortDescriptors = [sortDescriptor]
+        
+        fetchedResultsController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: DataController.shared.viewContext, sectionNameKeyPath: nil, cacheName: "offline")
+        do {
+            // Fetch results
+            try fetchedResultsController.performFetch()
+        } catch {
+            print("Error with Offline data")
+            showFailure(message: "Could not retrieve saved weather information")
+        }
+    }
 }
 
 // MARK: TableView Methods
@@ -327,8 +532,11 @@ extension HomeController: CLLocationManagerDelegate {
             return
         }
         
-        getCurrentWeather(coordinates: location.coordinate)
-        findCity(coordinates: location.coordinate)
+        if offlineCheck == false {
+            getCurrentWeather(coordinates: location.coordinate)
+            findCity(coordinates: location.coordinate)
+            coordinate = location.coordinate
+        }
     }
     
     /// Handle authorization for the location manager.
@@ -366,6 +574,5 @@ extension HomeController: CLLocationManagerDelegate {
       locationManager.stopUpdatingLocation()
       print("Error: \(error)")
     }
-    
 }
 

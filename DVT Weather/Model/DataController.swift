@@ -17,12 +17,6 @@ class DataController {
         return persistentContainer.viewContext
     }
     
-    lazy var updateContext: NSManagedObjectContext = {
-        let updateContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
-        updateContext.parent = self.viewContext
-        return updateContext
-    }()
-    
     init(modelName:String) {
         persistentContainer = NSPersistentContainer(name: modelName)
     }
